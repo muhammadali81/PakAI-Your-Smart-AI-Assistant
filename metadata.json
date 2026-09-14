@@ -1,0 +1,6 @@
+{
+  "name": "Pak AI",
+  "description": "Pak AI - Your Smart AI Assistant by Muhammad Ali with Gemini AI integration and seamless task management",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

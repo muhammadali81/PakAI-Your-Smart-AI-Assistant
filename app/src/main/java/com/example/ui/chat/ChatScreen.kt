@@ -39,10 +39,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Menu
@@ -59,6 +63,9 @@ import androidx.compose.material.icons.filled.ThumbDownOffAlt
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.ThumbUpOffAlt
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -127,6 +134,56 @@ fun ChatScreen(
     // Edit message dialog state
     var messageToEdit by remember { mutableStateOf<ChatMessageEntity?>(null) }
     var editMessageInput by remember { mutableStateOf("") }
+
+    // Photo and File attachment state
+    var attachedPhotoUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var attachedBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var attachedFileName by remember { mutableStateOf<String?>(null) }
+    var attachedFileContent by remember { mutableStateOf<String?>(null) }
+    var showAttachmentMenu by remember { mutableStateOf(false) }
+
+    // Photo picker launcher (Android Photo Picker)
+    val chatPhotoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: android.net.Uri? ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                val decoded = android.graphics.BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+                if (decoded != null) {
+                    attachedPhotoUri = it
+                    attachedBitmap = decoded
+                    attachedFileName = "photo_${System.currentTimeMillis()}.jpg"
+                    attachedFileContent = null
+                    Toast.makeText(context, "Photo attached", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Could not attach photo: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Document file picker launcher
+    val chatFilePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let {
+            try {
+                val fileName = it.lastPathSegment?.substringAfterLast('/') ?: "document.txt"
+                val inputStream = context.contentResolver.openInputStream(it)
+                val text = inputStream?.bufferedReader()?.use { reader -> reader.readText() } ?: ""
+                val snippet = if (text.length > 3000) text.take(3000) + "\n...[truncated]" else text
+                attachedFileName = fileName
+                attachedFileContent = snippet
+                attachedPhotoUri = null
+                attachedBitmap = null
+                Toast.makeText(context, "File attached: $fileName", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Could not read file: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     // Speech to text launcher
     val speechRecognizerLauncher = rememberLauncherForActivityResult(
@@ -403,17 +460,150 @@ fun ChatScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                // --- Attachment Preview Bar ---
+                AnimatedVisibility(visible = attachedBitmap != null || attachedFileName != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF182230))
+                            .border(1.dp, Color(0xFF00FF88).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (attachedBitmap != null) {
+                            Image(
+                                bitmap = attachedBitmap!!.asImageBitmap(),
+                                contentDescription = "Attached Photo",
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = attachedFileName ?: "Photo attached",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Ready for AI Vision & OCR",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF00FF88)
+                                )
+                            }
+                        } else if (attachedFileName != null) {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = "Attached Document",
+                                tint = Color(0xFF00FF88),
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = attachedFileName ?: "Document",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = "Document attached for context",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF8DA3B8)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = {
+                                attachedPhotoUri = null
+                                attachedBitmap = null
+                                attachedFileName = null
+                                attachedFileContent = null
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove attachment",
+                                tint = Color(0xFFFF6B6B),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Attachment (+) Button with Dropdown
+                    Box {
+                        IconButton(
+                            onClick = { showAttachmentMenu = true },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1B2430))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Upload Photo or File",
+                                tint = Color(0xFF00FF88),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showAttachmentMenu,
+                            onDismissRequest = { showAttachmentMenu = false },
+                            modifier = Modifier.background(Color(0xFF141D28))
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Image, contentDescription = null, tint = Color(0xFF00FF88), modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text("Upload Photo", color = Color.White, fontSize = 13.sp)
+                                    }
+                                },
+                                onClick = {
+                                    showAttachmentMenu = false
+                                    chatPhotoPickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                }
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.AttachFile, contentDescription = null, tint = Color(0xFF00FF88), modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text("Upload File / Document", color = Color.White, fontSize = 13.sp)
+                                    }
+                                },
+                                onClick = {
+                                    showAttachmentMenu = false
+                                    chatFilePickerLauncher.launch("*/*")
+                                }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
                     // Voice Dictation Mic Button (ChatGPT Mic)
                     IconButton(
                         onClick = {
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         },
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(40.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF1B2430))
                     ) {
@@ -425,7 +615,7 @@ fun ChatScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
                     // Text Input
                     OutlinedTextField(
@@ -453,18 +643,36 @@ fun ChatScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    val canSend = (inputText.isNotBlank() || attachedBitmap != null || attachedFileName != null) && !isLoading
 
                     // Send Button
                     Box(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
-                            .background(if (inputText.isNotBlank() && !isLoading) Color(0xFF00FF88) else Color(0x3300FF88))
-                            .clickable(enabled = inputText.isNotBlank() && !isLoading) {
+                            .background(if (canSend) Color(0xFF00FF88) else Color(0x3300FF88))
+                            .clickable(enabled = canSend) {
                                 val text = inputText
+                                var b64: String? = null
+                                if (attachedBitmap != null) {
+                                    val stream = java.io.ByteArrayOutputStream()
+                                    attachedBitmap?.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, stream)
+                                    b64 = android.util.Base64.encodeToString(stream.toByteArray(), android.util.Base64.NO_WRAP)
+                                }
+                                viewModel.sendMessageWithAttachment(
+                                    text = text,
+                                    attachmentType = if (attachedBitmap != null) "image" else if (attachedFileName != null) "file" else null,
+                                    attachmentName = attachedFileName,
+                                    base64Image = b64,
+                                    fileContentSnippet = attachedFileContent
+                                )
                                 inputText = ""
-                                viewModel.sendMessage(text)
+                                attachedPhotoUri = null
+                                attachedBitmap = null
+                                attachedFileName = null
+                                attachedFileContent = null
                             }
                             .testTag("send_button"),
                         contentAlignment = Alignment.Center

@@ -141,19 +141,39 @@ class ChatViewModel(application: Application) : AndroidViewModel(application), T
 
     // --- Chat Messaging ---
     fun sendMessage(text: String) {
+        sendMessageWithAttachment(text = text, attachmentType = null, attachmentName = null, base64Image = null, fileContentSnippet = null)
+    }
+
+    fun sendMessageWithAttachment(
+        text: String,
+        attachmentType: String? = null,
+        attachmentName: String? = null,
+        base64Image: String? = null,
+        fileContentSnippet: String? = null
+    ) {
         val trimmed = text.trim()
-        if (trimmed.isBlank() || _isLoading.value) return
+        if (trimmed.isBlank() && base64Image == null && fileContentSnippet == null) return
+        if (_isLoading.value) return
 
         val sessionId = _currentSessionId.value
 
         viewModelScope.launch {
             _errorMessage.value = null
 
-            // 1. Auto-update session title if it's currently "New Chat" or "Pak AI Assistant"
+            val displayUserText = buildString {
+                if (attachmentType == "image") {
+                    append("📷 [Photo Attached: ${attachmentName ?: "Image"}]\n")
+                } else if (attachmentType == "file") {
+                    append("📄 [File Attached: ${attachmentName ?: "Document"}]\n")
+                }
+                append(trimmed.ifBlank { if (attachmentType == "image") "Analyze this photo" else "Analyze this attached file" })
+            }
+
+            // 1. Auto-update session title
             val currentSessions = sessions.value
             val currentSession = currentSessions.find { it.id == sessionId }
             if (currentSession != null && (currentSession.title == "New Chat" || currentSession.title == "Pak AI Assistant")) {
-                val autoTitle = if (trimmed.length > 28) trimmed.take(28) + "..." else trimmed
+                val autoTitle = if (trimmed.length > 28) trimmed.take(28) + "..." else if (trimmed.isNotBlank()) trimmed else (attachmentName ?: "Attachment Analysis")
                 repository.updateSessionTitle(sessionId, autoTitle)
             }
 
@@ -161,19 +181,29 @@ class ChatViewModel(application: Application) : AndroidViewModel(application), T
             val userMsg = ChatMessageEntity(
                 sessionId = sessionId,
                 role = "user",
-                content = trimmed
+                content = displayUserText
             )
             repository.saveMessage(userMsg)
 
             _isLoading.value = true
 
             // 3. Query Gemini API
-            val currentHistory = messages.value
-            val result = repository.sendMessage(
-                userMessage = trimmed,
-                conversationHistory = currentHistory,
-                overrideModel = _selectedModel.value
-            )
+            val result = if (base64Image != null) {
+                val prompt = trimmed.ifBlank { "Analyze this uploaded photo with detail: identify objects, text (OCR), colors, and provide intelligent insights." }
+                repository.analyzeImage(base64Image, prompt)
+            } else {
+                val queryText = if (fileContentSnippet != null) {
+                    "$trimmed\n\n--- Attached File Content ($attachmentName) ---\n$fileContentSnippet"
+                } else {
+                    trimmed
+                }
+                val currentHistory = messages.value
+                repository.sendMessage(
+                    userMessage = queryText,
+                    conversationHistory = currentHistory,
+                    overrideModel = _selectedModel.value
+                )
+            }
 
             if (result.isSuccess) {
                 val botReply = result.getOrNull() ?: "I'm here to help!"

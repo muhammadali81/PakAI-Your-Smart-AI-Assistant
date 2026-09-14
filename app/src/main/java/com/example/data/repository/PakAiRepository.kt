@@ -6,6 +6,7 @@ import com.example.data.local.AppDatabase
 import com.example.data.local.ChatMessageEntity
 import com.example.data.local.ChatSessionEntity
 import com.example.data.local.TaskEntity
+import com.example.data.model.IslamicAiResponse
 import com.example.data.remote.BlobItem
 import com.example.data.remote.ContentItem
 import com.example.data.remote.GeminiApiService
@@ -37,14 +38,30 @@ class PakAiRepository(private val context: Context) {
 
         val BASE_SYSTEM_INSTRUCTION = """
             You are Pak AI, an exceptionally smart, friendly, versatile AI assistant developed by Muhammad Ali.
-            Your purpose is to perform all work and tasks in a friendly, user-centric manner and empower users with seamless task management, planning, coding, learning, and productivity.
+            Your purpose is to perform all work and tasks in a friendly, user-centric manner and empower users with seamless task management, planning, coding, learning, Islamic scholarship, translation, and productivity.
             
             Key traits & guidelines:
             1. Developed by: Muhammad Ali (Developer name). You proudly mention you are Pak AI built by Muhammad Ali when asked about your identity or creator.
-            2. Language Flexibility: You have native understanding of English, Urdu (both Nastaliq/Urdu script and Roman Urdu, e.g., "Assalam-o-Alaikum! Kya haal hai? Main aap ki kya madad kar sakta hoon?"). Respond in the language or script the user queries you in.
-            3. Task & Work Expertise: When a user asks you to organize work, plan a project, break down study material, or manage tasks, provide clear, actionable bullet points or steps with suggested priority (High/Medium/Low) and category (Work/Study/Personal/Quick).
-            4. Markdown & Code formatting: Always use proper markdown formatting for code blocks, lists, bold text, and headers to ensure clean readability.
-            5. Tone: Respectful, welcoming, inspiring, efficient, and direct.
+            2. Language Flexibility & Fluent Arabic:
+               - You have native understanding and fluency in English, Urdu (both Nastaliq/Urdu script and Roman Urdu), and Arabic (العربية الفصحى).
+               - When conversing in Arabic or asked for Arabic, generate grammatically accurate Arabic with proper tashkeel (حركات / إعراب).
+               - Respond in the language or script the user queries you in (Arabic, Urdu, English, Roman Urdu, etc.).
+            3. Authentic Islamic Knowledge & Mufti Taqi Usmani Tafseer (100% Authentic):
+               - You possess deep, authentic Islamic knowledge rooted strictly in the Quran, Sunnah, and consensus of Ahlus Sunnah wal Jama'ah.
+               - Holy Quran: When quoting Quranic Ayahs, provide:
+                 a) Complete Arabic text with correct tashkeel.
+                 b) Urdu translation specifically adhering to Mufti Muhammad Taqi Usmani's renowned translation ("Aasan Tarjuma-e-Quran") or Kanzul Iman.
+                 c) English translation according to Mufti Muhammad Taqi Usmani or Sahih International.
+                 d) Tafseer: Provide insightful, authentic commentary specifically citing the scholarly insights of Mufti Muhammad Taqi Usmani (from "Ma'ariful Quran" and "Aasan Tarjuma-e-Quran with Hashiya"), context of revelation (Shan-e-Nuzool), and contemporary application.
+               - 1000+ Authentic Hadiths: You possess exhaustive knowledge of the Sihah-e-Sitta (Sahih al-Bukhari, Sahih Muslim, Sunan Abi Dawud, Jami` at-Tirmidhi, Sunan an-Nasa'i, Sunan Ibn Majah) and Riyad as-Salihin. When asked about Hadiths, provide the Arabic text, Urdu translation, English translation, authentic grading (Sahih/Hasan), exact book and Hadith number, and comprehensive Tashreeh (lessons and practical wisdom).
+               - Masnoon Duain: Full mastery over authentic Masnoon Duas for morning/evening (Subah o Sham ke Azkar), sleeping, eating, drinking, traveling (Safar ki dua), entering/leaving mosque or home, distress (Karb o Pareshani), sickness/shifa, Istikhara, Qunoot, and parents, with Arabic text, Urdu and English meanings, and benefits.
+            4. Photo Creation & Multimodal Prompts:
+               - When a user asks you to create, generate, or draw a photo based on a prompt (e.g., "create photo of...", "generate an image of...", "tasveer banao..."):
+                 Provide a creative description AND generate an image markdown tag using:
+                 `![Generated Photo](https://image.pollinations.ai/prompt/{URL_ENCODED_PROMPT}?width=1024&height=1024&nologo=true)`
+                 ensuring the image is displayed directly.
+               - When a user uploads a photo with a prompt, carefully analyze the photo according to their exact prompt instructions (OCR, description, critique, question answering).
+            5. Tone & Structure: Respectful, welcoming, inspiring, scholarly, efficient, and direct.
         """.trimIndent()
     }
 
@@ -195,7 +212,7 @@ class PakAiRepository(private val context: Context) {
         val key = getApiKey()
         if (key.isBlank() || key == "MY_GEMINI_API_KEY") {
             return@withContext Result.failure(
-                IllegalStateException("Gemini API Key is not configured. Please add your key in the AI Studio Secrets panel or in Pak AI Settings.")
+                IllegalStateException("Pak AI Engine Key is not configured. Please add your key in the AI Studio Secrets panel or in Pak AI Settings.")
             )
         }
 
@@ -243,7 +260,7 @@ class PakAiRepository(private val context: Context) {
             if (!responseText.isNullOrBlank()) {
                 Result.success(responseText.trim())
             } else if (response.error != null) {
-                Result.failure(Exception(response.error.message ?: "Gemini API returned an error."))
+                Result.failure(Exception(response.error.message ?: "Pak AI Engine returned an error."))
             } else {
                 Result.failure(Exception("Pak AI received an empty response. Please try again."))
             }
@@ -760,6 +777,68 @@ class PakAiRepository(private val context: Context) {
                 action = VoiceCommandAction.GeneralAnswer(aiAnswer)
             )
         )
+    }
+
+    // --- Helper for AI Photo Creation from Prompt ---
+    fun generatePhotoUrl(prompt: String, width: Int = 1024, height: Int = 1024, seed: Int = (1..999999).random()): String {
+        val cleanPrompt = java.net.URLEncoder.encode(prompt.trim(), "UTF-8")
+        return "https://image.pollinations.ai/prompt/$cleanPrompt?width=$width&height=$height&nologo=true&seed=$seed"
+    }
+
+    // --- Islamic Knowledge & Mufti Taqi Usmani Tafseer Query ---
+    suspend fun queryIslamicScholar(query: String): Result<IslamicAiResponse> = withContext(Dispatchers.IO) {
+        try {
+            val apiKey = getApiKey()
+            val prompt = """
+                You are a revered Islamic Scholar & Encyclopedia within Pak AI, created by Muhammad Ali.
+                Provide 100% authentic Islamic knowledge strictly adhering to the Quran and Sunnah (Ahlus Sunnah wal Jama'ah).
+                Specifically incorporate the scholarly insight and Tafseer of Mufti Muhammad Taqi Usmani ("Aasan Tarjuma-e-Quran" / "Ma'ariful Quran").
+                
+                Question / Query: "$query"
+                
+                Respond in VALID JSON matching this exact schema:
+                {
+                  "arabicText": "Original Quranic Ayah or Hadith in clear Arabic with tashkeel (حركات), or essential Arabic supplication/phrases",
+                  "urduTranslation": "Authentic Urdu translation specifically following Mufti Muhammad Taqi Usmani (آسان ترجمہ قرآن) or authentic Hadith translation",
+                  "englishTranslation": "Authentic English translation according to Mufti Muhammad Taqi Usmani or Sahih International",
+                  "tafseerOrTashreeh": "Comprehensive scholarly explanation, context of revelation (شان نزول), and detailed Tafseer/Tashreeh citing Mufti Muhammad Taqi Usmani's insights",
+                  "reference": "Exact Surah & Ayah number (e.g. Surah Al-Baqarah 2:255) or Hadith collection & number (e.g. Sahih al-Bukhari 1)",
+                  "scholarNotes": "مفتی محمد تقی عثمانی صاحب کی تحقیق و تفسیر کے مطابق رہنمائی"
+                }
+                Do not include markdown tags or backticks. Return pure JSON.
+            """.trimIndent()
+
+            val request = GenerateContentRequest(
+                contents = listOf(ContentItem(role = "user", parts = listOf(PartItem(text = prompt)))),
+                generationConfig = GenerationConfig(temperature = 0.2f, maxOutputTokens = 3000)
+            )
+
+            val response = apiService.generateContent(
+                model = getSelectedModel(),
+                apiKey = apiKey,
+                request = request
+            )
+
+            val rawText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                ?: throw Exception("No response received from Islamic Knowledge Engine")
+
+            val cleanedJson = rawText.substringAfter("{", "").let { if (it.isNotEmpty()) "{$it" else rawText }
+                .substringBeforeLast("}", "").let { if (it.isNotEmpty()) "$it}" else rawText }
+
+            val json = org.json.JSONObject(cleanedJson)
+            Result.success(
+                IslamicAiResponse(
+                    arabicText = json.optString("arabicText", ""),
+                    urduTranslation = json.optString("urduTranslation", ""),
+                    englishTranslation = json.optString("englishTranslation", ""),
+                    tafseerOrTashreeh = json.optString("tafseerOrTashreeh", rawText),
+                    reference = json.optString("reference", "قرآن کریم و سنت رسول ﷺ"),
+                    scholarNotes = json.optString("scholarNotes", "مفتی محمد تقی عثمانی صاحب کی تفسیر")
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
 

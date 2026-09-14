@@ -66,9 +66,13 @@ import com.example.ui.theme.PakGreenDark
 import com.example.ui.theme.PakNeonGreen
 
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Mosque
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Slideshow
 import com.example.ui.tools.StudioTool
 
@@ -326,28 +330,121 @@ fun HubScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     ActionRow(
+                        icon = Icons.Default.Mosque,
+                        title = "اسلامک انسائیکلوپیڈیا (قرآن، 1000+ احادیث، تفسیر مفتی تقی عثمانی)",
+                        onClick = { onOpenStudioTool(StudioTool.ISLAMIC_KNOWLEDGE) }
+                    )
+
+                    ActionRow(
+                        icon = Icons.Default.Language,
+                        title = "مترجم (100+ زبانیں: جس میں لکھیں اور جس میں ترجمہ چاہیں)",
+                        onClick = { onOpenStudioTool(StudioTool.POLYGLOT) }
+                    )
+
+                    ActionRow(
+                        icon = Icons.Default.Image,
+                        title = "فوٹو اسٹوڈیو و پرامپٹ سے تصویر بنائیں (AI Vision & Generator)",
+                        onClick = { onOpenStudioTool(StudioTool.PHOTO_EDITOR) }
+                    )
+
+                    ActionRow(
                         icon = Icons.Default.PictureAsPdf,
-                        title = "PDF Maker (Reports, Proposals, Resumes)",
+                        title = "پی ڈی ایف میکر (PDF Maker for Reports & Resumes)",
                         onClick = { onOpenStudioTool(StudioTool.PDF_MAKER) }
                     )
 
                     ActionRow(
                         icon = Icons.Default.Slideshow,
-                        title = "Presentation PPT Slides Maker (16:9 & HTML5)",
+                        title = "پاور پوائنٹ سلائیڈز میکر (Presentation PPT Studio)",
                         onClick = { onOpenStudioTool(StudioTool.PPT_MAKER) }
                     )
+                }
+            }
 
-                    ActionRow(
-                        icon = Icons.Default.Image,
-                        title = "Photo Editor Studio & AI Vision Lens",
-                        onClick = { onOpenStudioTool(StudioTool.PHOTO_EDITOR) }
+            // Download APK & App Distribution Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, PakNeonGreen.copy(alpha = 0.4f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Android, contentDescription = null, tint = PakNeonGreen, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Download APK / انسٹال کریں",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = PakNeonGreen.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = "v2.5 APK",
+                                fontSize = 11.sp,
+                                color = PakNeonGreen,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "آپ پاک اے آئی ایپ کی اے پی کے فائل ڈاؤنلوڈ کر کے کسی بھی اینڈرائیڈ موبائل پر براہِ راست انسٹال کر سکتے ہیں۔ ویب پورٹل اور اسٹوریج سے ڈاؤنلوڈ کی سہولت دستیاب ہے۔",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
                     )
 
-                    ActionRow(
-                        icon = Icons.Default.Language,
-                        title = "100+ Languages Polyglot Translator",
-                        onClick = { onOpenStudioTool(StudioTool.POLYGLOT) }
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                Toast.makeText(context, "APK download ready! Use Project Settings > Export APK or download from Web Portal", Toast.LENGTH_LONG).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = PakNeonGreen),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, tint = Color(0xFF00391C), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Download APK", color = Color(0xFF00391C), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                val sendIntent = android.content.Intent().apply {
+                                    action = android.content.Intent.ACTION_SEND
+                                    putExtra(android.content.Intent.EXTRA_TEXT, "Download Pak AI by Muhammad Ali with Holy Quran, Hadith, Photo Creator & 100+ Languages Translator! Download APK now.")
+                                    type = "text/plain"
+                                }
+                                context.startActivity(android.content.Intent.createChooser(sendIntent, "Share Pak AI APK Link"))
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF192533)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(0.9f)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Share App", color = Color.White, fontSize = 12.sp)
+                        }
+                    }
                 }
             }
 

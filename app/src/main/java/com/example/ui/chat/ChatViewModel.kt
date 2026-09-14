@@ -88,7 +88,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application), T
 
     fun setCustomApiKey(key: String) {
         repository.setCustomApiKey(key)
-        _toastNotification.value = "Gemini API Key saved!"
+        _toastNotification.value = "Pak AI Engine Key saved!"
     }
 
     fun setSelectedModel(model: String) {
@@ -187,10 +187,46 @@ class ChatViewModel(application: Application) : AndroidViewModel(application), T
 
             _isLoading.value = true
 
-            // 3. Query Gemini API
+            // 3. Check for Photo Creation prompt intent or query AI
+            val isPhotoCreationIntent = trimmed.startsWith("/image", ignoreCase = true) ||
+                    trimmed.startsWith("/photo", ignoreCase = true) ||
+                    trimmed.contains("create photo", ignoreCase = true) ||
+                    trimmed.contains("generate photo", ignoreCase = true) ||
+                    trimmed.contains("generate image", ignoreCase = true) ||
+                    trimmed.contains("draw photo", ignoreCase = true) ||
+                    trimmed.contains("photo banao", ignoreCase = true) ||
+                    trimmed.contains("tasveer banao", ignoreCase = true) ||
+                    trimmed.contains("تصویر بنائیں", ignoreCase = true)
+
             val result = if (base64Image != null) {
                 val prompt = trimmed.ifBlank { "Analyze this uploaded photo with detail: identify objects, text (OCR), colors, and provide intelligent insights." }
-                repository.analyzeImage(base64Image, prompt)
+                val visionResult = repository.analyzeImage(base64Image, prompt)
+                if (isPhotoCreationIntent && visionResult.isSuccess) {
+                    val cleanPrompt = trimmed.replace(Regex("(?i)^(/image|/photo|create photo|generate photo|generate image|draw photo|photo banao|tasveer banao|تصویر بنائیں)\\s*"), "").trim().ifBlank { "creative photorealistic transformation" }
+                    val photoUrl = repository.generatePhotoUrl(cleanPrompt)
+                    val combinedReply = buildString {
+                        append("🎨 **Photo Analysis & Generation:**\n\n")
+                        append(visionResult.getOrNull() ?: "")
+                        append("\n\n---\n### 🖼️ Created Photo according to Prompt:\n\n")
+                        append("![$cleanPrompt]($photoUrl)\n\n")
+                        append("✨ **Prompt:** $cleanPrompt\n")
+                        append("📌 *Image rendered live. Tap to view or download.*")
+                    }
+                    Result.success(combinedReply)
+                } else {
+                    visionResult
+                }
+            } else if (isPhotoCreationIntent) {
+                val cleanPrompt = trimmed.replace(Regex("(?i)^(/image|/photo|create photo of|create photo|generate photo of|generate photo|generate image of|generate image|draw photo of|draw photo|photo banao|tasveer banao|تصویر بنائیں)\\s*"), "").trim().ifBlank { trimmed }
+                val photoUrl = repository.generatePhotoUrl(cleanPrompt)
+                val reply = buildString {
+                    append("### 🖼️ Created Photo according to Prompt:\n\n")
+                    append("![$cleanPrompt]($photoUrl)\n\n")
+                    append("✨ **Prompt:** $cleanPrompt  \n")
+                    append("🎨 **Engine:** Pak AI Neural Visual Core (1024x1024 Photorealistic)  \n")
+                    append("💡 *Tip: You can open this photo in Photo Studio for filters, cropping, and instant export!*")
+                }
+                Result.success(reply)
             } else {
                 val queryText = if (fileContentSnippet != null) {
                     "$trimmed\n\n--- Attached File Content ($attachmentName) ---\n$fileContentSnippet"
@@ -219,7 +255,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application), T
                 val errorMsg = ChatMessageEntity(
                     sessionId = sessionId,
                     role = "model",
-                    content = "⚠️ $error\n\nPlease check your Gemini API Key in Settings (gear icon) or ensure network connectivity."
+                    content = "⚠️ $error\n\nPlease check your Pak AI Engine Key in Settings (gear icon) or ensure network connectivity."
                 )
                 repository.saveMessage(errorMsg)
             }

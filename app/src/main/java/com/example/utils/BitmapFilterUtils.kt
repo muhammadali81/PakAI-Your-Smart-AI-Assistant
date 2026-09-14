@@ -7,6 +7,7 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.net.Uri
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -143,6 +144,21 @@ object BitmapFilterUtils {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
         }
         return file
+    }
+
+    fun saveBitmapToGallery(context: Context, bitmap: Bitmap, fileName: String): Uri? {
+        val contentValues = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName)
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, android.os.Environment.DIRECTORY_PICTURES + "/PakAI")
+        }
+        val uri = context.contentResolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        uri?.let {
+            context.contentResolver.openOutputStream(it).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out!!)
+            }
+        }
+        return uri
     }
 
     fun bitmapToBase64(bitmap: Bitmap): String {

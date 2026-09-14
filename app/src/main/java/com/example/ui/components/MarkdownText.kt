@@ -33,8 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -131,6 +133,37 @@ fun MarkdownText(
                             color = textColor
                         )
                     )
+                }
+                is MarkdownBlock.ImageBlock -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(260.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            color = Color(0xFF1B232D)
+                        ) {
+                            AsyncImage(
+                                model = block.url,
+                                contentDescription = block.alt.ifBlank { "Generated Photo" },
+                                modifier = Modifier.fillMaxWidth(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        if (block.alt.isNotBlank()) {
+                            Text(
+                                text = "🖼️ " + block.alt,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -233,6 +266,7 @@ private sealed class MarkdownBlock {
     data class BulletItem(val text: String) : MarkdownBlock()
     data class NumberedItem(val number: String, val text: String) : MarkdownBlock()
     data class Paragraph(val text: String) : MarkdownBlock()
+    data class ImageBlock(val alt: String, val url: String) : MarkdownBlock()
 }
 
 private fun parseMarkdownBlocks(text: String): List<MarkdownBlock> {
@@ -286,6 +320,14 @@ private fun parseMarkdownBlocks(text: String): List<MarkdownBlock> {
             val num = numberMatch.groupValues[1]
             val itemText = numberMatch.groupValues[2]
             blocks.add(MarkdownBlock.NumberedItem(num, itemText))
+            i++
+            continue
+        }
+
+        // Image tag: ![alt](url)
+        val imageMatch = Regex("""^!\[(.*?)\]\((.*?)\)$""").find(trimmed)
+        if (imageMatch != null) {
+            blocks.add(MarkdownBlock.ImageBlock(imageMatch.groupValues[1], imageMatch.groupValues[2]))
             i++
             continue
         }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Mosque
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material3.Icon
@@ -32,16 +33,17 @@ import androidx.compose.ui.unit.sp
 import com.example.data.repository.PakAiRepository
 
 enum class StudioTool(val label: String) {
-    PDF_MAKER("PDF Maker"),
-    PPT_MAKER("PPT Slides"),
-    PHOTO_EDITOR("Photo Editor"),
-    POLYGLOT("100+ Languages")
+    ISLAMIC_KNOWLEDGE("اسلامک اسٹوڈیو"),
+    POLYGLOT("مترجم (100+ زبانیں)"),
+    PHOTO_EDITOR("فوٹو اسٹوڈیو و جنریٹر"),
+    PDF_MAKER("پی ڈی ایف میکر"),
+    PPT_MAKER("پاور پوائنٹ سلائیڈز")
 }
 
 @Composable
 fun ToolsStudioScreen(
     repository: PakAiRepository,
-    initialTool: StudioTool = StudioTool.PDF_MAKER,
+    initialTool: StudioTool = StudioTool.ISLAMIC_KNOWLEDGE,
     initialTopic: String = "",
     onSaveTask: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -76,10 +78,11 @@ fun ToolsStudioScreen(
                     onClick = { selectedTabIndex = index },
                     icon = {
                         val icon = when (tool) {
+                            StudioTool.ISLAMIC_KNOWLEDGE -> Icons.Default.Mosque
+                            StudioTool.POLYGLOT -> Icons.Default.Language
+                            StudioTool.PHOTO_EDITOR -> Icons.Default.Image
                             StudioTool.PDF_MAKER -> Icons.Default.PictureAsPdf
                             StudioTool.PPT_MAKER -> Icons.Default.Slideshow
-                            StudioTool.PHOTO_EDITOR -> Icons.Default.Image
-                            StudioTool.POLYGLOT -> Icons.Default.Language
                         }
                         Icon(
                             icon,
@@ -102,6 +105,16 @@ fun ToolsStudioScreen(
 
         Box(modifier = Modifier.fillMaxSize()) {
             when (tabs[selectedTabIndex]) {
+                StudioTool.ISLAMIC_KNOWLEDGE -> IslamicStudio(
+                    repository = repository
+                )
+                StudioTool.POLYGLOT -> UniversalTranslatorStudio(
+                    repository = repository,
+                    onSaveAsTask = onSaveTask
+                )
+                StudioTool.PHOTO_EDITOR -> PhotoEditorStudio(
+                    repository = repository
+                )
                 StudioTool.PDF_MAKER -> PdfMakerStudio(
                     repository = repository,
                     initialTopic = initialTopic
@@ -109,13 +122,6 @@ fun ToolsStudioScreen(
                 StudioTool.PPT_MAKER -> PptMakerStudio(
                     repository = repository,
                     initialTopic = initialTopic
-                )
-                StudioTool.PHOTO_EDITOR -> PhotoEditorStudio(
-                    repository = repository
-                )
-                StudioTool.POLYGLOT -> UniversalTranslatorStudio(
-                    repository = repository,
-                    onSaveAsTask = onSaveTask
                 )
             }
         }

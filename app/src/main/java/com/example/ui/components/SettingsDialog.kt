@@ -417,7 +417,7 @@ private fun GeneralSettingsTab(
             SettingRow(
                 icon = Icons.Default.Psychology,
                 title = "AI Core Engine",
-                subtitle = "Google Gemini 3.5 Flash via REST API"
+                subtitle = "Pak AI Neural Core 3.5 via REST API"
             )
 
             Divider(color = Color(0xFF222D3D))
@@ -619,7 +619,7 @@ private fun ModelIntelligenceTab(
             )
 
             ModelOptionItem(
-                name = "Gemini 3.5 Flash",
+                name = "Pak AI 3.5 Engine",
                 badge = "Recommended • Fast",
                 description = "Ultra fast, versatile reasoning, ideal for chat, coding, tasks & voice.",
                 isSelected = selectedModel == "gemini-3.5-flash",
@@ -627,9 +627,9 @@ private fun ModelIntelligenceTab(
             )
 
             ModelOptionItem(
-                name = "Gemini 3.5 Pro",
+                name = "Pak AI 3.5 Ultra",
                 badge = "Advanced Reasoning",
-                description = "Deep analytical capabilities for highly complex coding and architecture.",
+                description = "Deep analytical capabilities for highly complex coding, documents & Islamic research.",
                 isSelected = selectedModel == "gemini-3.5-pro",
                 onClick = { onModelChange("gemini-3.5-pro") }
             )
@@ -751,7 +751,7 @@ private fun ModelIntelligenceTab(
         }
     }
 
-    // Gemini API Key Override
+    // Pak AI Engine Key Override
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -762,7 +762,7 @@ private fun ModelIntelligenceTab(
                 Icon(Icons.Default.Key, contentDescription = null, tint = Color(0xFF00FF88))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Gemini API Key",
+                    text = "Pak AI Engine Key",
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -771,7 +771,7 @@ private fun ModelIntelligenceTab(
             }
 
             Text(
-                text = "Loaded from AI Studio build configuration by default. You can also paste your personal Google AI Studio key here.",
+                text = "Loaded from AI Studio build configuration by default. You can also paste your personal AI Engine key here.",
                 style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF8C9BAE), fontSize = 11.sp)
             )
 

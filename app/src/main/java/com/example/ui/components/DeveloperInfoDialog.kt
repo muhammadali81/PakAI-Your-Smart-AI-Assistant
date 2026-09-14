@@ -98,7 +98,7 @@ fun DeveloperInfoDialog(
                         color = PakNeonGreen
                     )
                     Text(
-                        text = "Version 1.0 • Powered by Gemini 3.5 Flash",
+                        text = "Version 1.0 • Powered by Pak AI Neural Core",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -187,7 +187,7 @@ fun DeveloperInfoDialog(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Gemini 3.5 Flash",
+                                    text = "Pak AI 3.5 Engine",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -234,7 +234,7 @@ fun DeveloperInfoDialog(
                             OutlinedTextField(
                                 value = enteredKey,
                                 onValueChange = { enteredKey = it },
-                                label = { Text("Enter Gemini API Key") },
+                                label = { Text("Enter Pak AI Engine Key") },
                                 singleLine = true,
                                 modifier = Modifier
                                     .fillMaxWidth()

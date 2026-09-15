@@ -46,6 +46,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -112,7 +113,7 @@ fun SettingsDialog(
 
     var showClearHistoryConfirm by remember { mutableStateOf(false) }
 
-    val tabs = listOf("General", "Personalize", "Model & AI", "Voice", "Data")
+    val tabs = listOf("General", "Personalize", "Model & AI", "Voice", "Data", "Studio")
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -285,6 +286,9 @@ fun SettingsDialog(
                                     onClearCompletedTasks()
                                     Toast.makeText(context, "Completed tasks cleared", Toast.LENGTH_SHORT).show()
                                 }
+                            )
+                            5 -> StudioSettingsTab(
+                                repository = repository
                             )
                         }
                     }
@@ -1052,6 +1056,75 @@ private fun DataControlsTab(
                 Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Delete All Chats", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudioSettingsTab(
+    repository: PakAiRepository
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161E28))
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(
+                text = "Studio Generator Settings",
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF00FF88)
+                )
+            )
+
+            // PPT Theme
+            val themes = listOf("Modern", "Professional", "Minimal", "Bold")
+            var selectedTheme by remember { mutableStateOf(repository.getPptTheme()) }
+            
+            Column {
+                Text("PPT Theme", fontSize = 12.sp, color = Color.Gray)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    themes.forEach { theme ->
+                        FilterChip(
+                            selected = selectedTheme == theme,
+                            onClick = { 
+                                selectedTheme = theme
+                                repository.setPptTheme(theme)
+                            },
+                            label = { Text(theme) }
+                        )
+                    }
+                }
+            }
+            
+            // Max Pages
+            var maxPages by remember { mutableStateOf(repository.getPptMaxPages()) }
+            Column {
+                Text("Max Pages/Slides: $maxPages", fontSize = 12.sp, color = Color.Gray)
+                // Using simple buttons for range adjust since Slider can be complex to match
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { if (maxPages > 5) { maxPages--; repository.setPptMaxPages(maxPages) } }) { Text("-") }
+                    Button(onClick = { if (maxPages < 30) { maxPages++; repository.setPptMaxPages(maxPages) } }) { Text("+") }
+                }
+            }
+
+            // Animations
+            var animationsEnabled by remember { mutableStateOf(repository.isPptAnimationEnabled()) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Enable Premium Animations", fontSize = 14.sp, color = Color.White)
+                androidx.compose.material3.Switch(
+                    checked = animationsEnabled,
+                    onCheckedChange = {
+                        animationsEnabled = it
+                        repository.setPptAnimationEnabled(it)
+                    }
+                )
             }
         }
     }

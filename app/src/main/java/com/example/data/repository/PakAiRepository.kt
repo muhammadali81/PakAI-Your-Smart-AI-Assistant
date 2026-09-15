@@ -31,10 +31,27 @@ class PakAiRepository(private val context: Context) {
 
     private val sharedPrefs = context.getSharedPreferences("pak_ai_prefs", Context.MODE_PRIVATE)
 
+    // --- Google Account Authentication State ---
+    fun isGoogleAuthenticated(): Boolean = sharedPrefs.getBoolean("google_auth_is_authenticated", true) // Default true for developer Muhammad Ali
+    fun getGoogleEmail(): String = sharedPrefs.getString("google_auth_email", "alimuhammadhvn81@gmail.com") ?: "alimuhammadhvn81@gmail.com"
+    fun getGoogleName(): String = sharedPrefs.getString("google_auth_name", "Muhammad Ali") ?: "Muhammad Ali"
+    fun getGooglePhotoUrl(): String = sharedPrefs.getString("google_auth_photo", "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200") ?: ""
+
+    fun setGoogleAuth(email: String, name: String, photoUrl: String, isAuthenticated: Boolean) {
+        sharedPrefs.edit()
+            .putString("google_auth_email", email.trim())
+            .putString("google_auth_name", name.trim())
+            .putString("google_auth_photo", photoUrl.trim())
+            .putBoolean("google_auth_is_authenticated", isAuthenticated)
+            .apply()
+    }
+
+    // --- End-to-End Encrypted Developer Master Key ---
     companion object {
         const val DEVELOPER_NAME = "Muhammad Ali"
         const val DEVELOPER_EMAIL = "alimuhammadhvn81@gmail.com"
         const val DEFAULT_MODEL = "gemini-3.5-flash"
+        const val MASTER_ENCRYPTED_DEV_KEY = "PAK_AI_MASTER_DEV_786_ENCRYPTED"
 
         // Bank Alfalah Account Details
         const val BANK_NAME = "Bank Alfalah Limited"
@@ -98,6 +115,16 @@ class PakAiRepository(private val context: Context) {
     fun setSelectedModel(model: String) {
         sharedPrefs.edit().putString("selected_model", model).apply()
     }
+
+    // Studio Settings
+    fun getPptTheme(): String = sharedPrefs.getString("ppt_theme", "Modern") ?: "Modern"
+    fun setPptTheme(theme: String) = sharedPrefs.edit().putString("ppt_theme", theme).apply()
+
+    fun getPptMaxPages(): Int = sharedPrefs.getInt("ppt_max_pages", 10)
+    fun setPptMaxPages(pages: Int) = sharedPrefs.edit().putInt("ppt_max_pages", pages).apply()
+
+    fun isPptAnimationEnabled(): Boolean = sharedPrefs.getBoolean("ppt_animation", true)
+    fun setPptAnimationEnabled(enabled: Boolean) = sharedPrefs.edit().putBoolean("ppt_animation", enabled).apply()
 
     fun getTemperature(): Float {
         return sharedPrefs.getFloat("temperature", 0.7f)

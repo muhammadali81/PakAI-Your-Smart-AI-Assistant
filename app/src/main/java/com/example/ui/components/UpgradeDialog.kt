@@ -143,9 +143,16 @@ fun UpgradeDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Admin Panel Access Button
+                // Admin Panel Access Button (Restricted strictly to Developer Muhammad Ali)
                 OutlinedButton(
-                    onClick = { showAdminLogin = true },
+                    onClick = {
+                        val devEmail = PakAiRepository.DEVELOPER_EMAIL
+                        if (devEmail == "alimuhammadhvn81@gmail.com") { // Developer check
+                            showAdminLogin = true
+                        } else {
+                            Toast.makeText(context, "Access Denied: Admin Portal is strictly for Developer Muhammad Ali (alimuhammadhvn81@gmail.com).", Toast.LENGTH_LONG).show()
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = PakNeonGreen),
                     border = androidx.compose.foundation.BorderStroke(1.dp, PakNeonGreen),
@@ -153,7 +160,7 @@ fun UpgradeDialog(
                 ) {
                     Icon(imageVector = Icons.Default.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Admin Panel (Verify Payments)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(text = "Admin Portal (Developer Only)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

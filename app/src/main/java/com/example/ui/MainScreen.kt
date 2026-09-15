@@ -48,6 +48,8 @@ import com.example.ui.components.ChatDrawerContent
 import com.example.ui.components.DeveloperInfoDialog
 import com.example.ui.components.PakAITopBar
 import com.example.ui.components.SettingsDialog
+import com.example.ui.components.GoogleAuthDialog
+import com.example.ui.components.EncryptedAdminPortalDialog
 import com.example.ui.hub.HubScreen
 import com.example.ui.tasks.TaskManagerScreen
 import com.example.ui.tasks.TaskViewModel
@@ -85,6 +87,8 @@ fun MainScreen(
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showVoiceDialog by remember { mutableStateOf(false) }
     var showUpgradeDialog by remember { mutableStateOf(false) }
+    var showGoogleAuthDialog by remember { mutableStateOf(false) }
+    var showAdminPortalDialog by remember { mutableStateOf(false) }
     var activeStudioTool by remember { mutableStateOf(StudioTool.PDF_MAKER) }
     var studioInitialTopic by remember { mutableStateOf("") }
 
@@ -127,6 +131,12 @@ fun MainScreen(
                 },
                 onOpenDeveloperInfo = {
                     showDevInfoDialog = true
+                },
+                onOpenGoogleAuth = {
+                    showGoogleAuthDialog = true
+                },
+                onOpenAdminPortal = {
+                    showAdminPortalDialog = true
                 },
                 onCloseDrawer = {
                     scope.launch { drawerState.close() }
@@ -403,6 +413,22 @@ fun MainScreen(
         UpgradeDialog(
             repository = chatViewModel.repository,
             onDismiss = { showUpgradeDialog = false }
+        )
+    }
+
+    // Google Authentication Dialog
+    if (showGoogleAuthDialog) {
+        GoogleAuthDialog(
+            repository = chatViewModel.repository,
+            onDismiss = { showGoogleAuthDialog = false }
+        )
+    }
+
+    // End-to-End Encrypted Admin Portal Dialog
+    if (showAdminPortalDialog) {
+        EncryptedAdminPortalDialog(
+            repository = chatViewModel.repository,
+            onDismiss = { showAdminPortalDialog = false }
         )
     }
 }

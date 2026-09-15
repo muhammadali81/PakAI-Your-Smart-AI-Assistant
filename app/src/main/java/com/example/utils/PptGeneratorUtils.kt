@@ -13,7 +13,8 @@ data class SlideModel(
     val title: String,
     val subtitle: String = "",
     val bullets: List<String> = emptyList(),
-    val notes: String = ""
+    val notes: String = "",
+    val visualContent: String = "Visual Diagram & Analytics Summary"
 )
 
 data class PptDeckModel(
@@ -232,6 +233,7 @@ object PptGeneratorUtils {
                   <div class="slide-card">
                     <div class="slide-title">Slide ${i + 1}: ${s.title}</div>
                     ${if (s.subtitle.isNotBlank()) "<div class=\"slide-sub\">${s.subtitle}</div>" else ""}
+                    <div class="visual-box">📊 Visual Content & Architecture: ${s.visualContent}</div>
                     <ul>
                 """.trimIndent())
                 s.bullets.forEach { b ->

@@ -19,17 +19,24 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,12 +49,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.data.model.PaymentRequest
 import com.example.data.repository.PakAiRepository
 import com.example.ui.theme.PakNeonGreen
 
@@ -57,7 +69,14 @@ fun UpgradeDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     var currentTier by remember { mutableStateOf(repository.getSubscriptionTier()) }
+
+    var selectedPlanForPayment by remember { mutableStateOf<Pair<String, String>?>(null) } // (PlanName, Amount)
+    var trxIdInput by remember { mutableStateOf("") }
+    var showAdminPanel by remember { mutableStateOf(false) }
+    var showAdminLogin by remember { mutableStateOf(false) }
+    var adminPinInput by remember { mutableStateOf("") }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -122,7 +141,22 @@ fun UpgradeDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Admin Panel Access Button
+                OutlinedButton(
+                    onClick = { showAdminLogin = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PakNeonGreen),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, PakNeonGreen),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Admin Panel (Verify Payments)", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Free Plan Card
                 PlanCard(
@@ -162,9 +196,7 @@ fun UpgradeDialog(
                     isCurrent = currentTier == "Pro",
                     accentColor = PakNeonGreen,
                     onSelect = {
-                        repository.setSubscriptionTier("Pro")
-                        currentTier = "Pro"
-                        Toast.makeText(context, "Successfully Upgraded to Pro Plan!", Toast.LENGTH_LONG).show()
+                        selectedPlanForPayment = Pair("Pro Plan", "3,000 PKR")
                     }
                 )
 
@@ -186,9 +218,7 @@ fun UpgradeDialog(
                     isCurrent = currentTier == "Pro Plus",
                     accentColor = Color(0xFFFFD700),
                     onSelect = {
-                        repository.setSubscriptionTier("Pro Plus")
-                        currentTier = "Pro Plus"
-                        Toast.makeText(context, "Successfully Upgraded to Pro Plus VIP!", Toast.LENGTH_LONG).show()
+                        selectedPlanForPayment = Pair("Pro Plus Plan", "6,000 PKR")
                     }
                 )
 
@@ -206,6 +236,294 @@ fun UpgradeDialog(
                     )
                 }
             }
+        }
+    }
+
+    // Bank Alfalah Payment Dialog when a Pro/Pro Plus plan is selected
+    if (selectedPlanForPayment != null) {
+        val plan = selectedPlanForPayment!!
+        AlertDialog(
+            onDismissRequest = { selectedPlanForPayment = null },
+            containerColor = Color(0xFF141A23),
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Payment, contentDescription = null, tint = PakNeonGreen)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Bank Alfalah Payment Gateway", color = Color.White, fontSize = 16.sp)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Transfer ${plan.second} for ${plan.first} using any payment method (JazzCash, EasyPaisa, Bank Transfer, Raast, ATM, or Card) to our official Bank Alfalah account:",
+                        fontSize = 13.sp,
+                        color = Color.LightGray
+                    )
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F141C)),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, PakNeonGreen.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            PaymentDetailRow("Bank Name:", PakAiRepository.BANK_NAME, clipboardManager, context)
+                            PaymentDetailRow("Account Title:", PakAiRepository.ACCOUNT_TITLE, clipboardManager, context)
+                            PaymentDetailRow("Account Number:", PakAiRepository.ACCOUNT_NUMBER, clipboardManager, context)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Enter Transaction ID (Trx ID) or Reference Number after payment:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PakNeonGreen
+                    )
+
+                    OutlinedTextField(
+                        value = trxIdInput,
+                        onValueChange = { trxIdInput = it },
+                        placeholder = { Text("e.g. TRX123456789", color = Color.Gray) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PakNeonGreen,
+                            unfocusedBorderColor = Color.DarkGray,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (trxIdInput.isBlank()) {
+                            Toast.makeText(context, "Please enter Transaction ID", Toast.LENGTH_SHORT).show()
+                        } else {
+                            repository.submitPaymentRequest(plan.first, plan.second, trxIdInput)
+                            Toast.makeText(context, "Payment submitted! Admin notification sent.", Toast.LENGTH_LONG).show()
+                            trxIdInput = ""
+                            selectedPlanForPayment = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PakNeonGreen)
+                ) {
+                    Text("Submit for Verification", color = Color(0xFF00391C), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { selectedPlanForPayment = null }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
+    }
+
+    // Admin Passcode Dialog
+    if (showAdminLogin) {
+        AlertDialog(
+            onDismissRequest = { showAdminLogin = false; adminPinInput = "" },
+            containerColor = Color(0xFF141A23),
+            title = { Text("Admin Panel Login", color = Color.White) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter Admin PIN (Default: 786):", color = Color.LightGray, fontSize = 13.sp)
+                    OutlinedTextField(
+                        value = adminPinInput,
+                        onValueChange = { adminPinInput = it },
+                        placeholder = { Text("PIN", color = Color.Gray) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PakNeonGreen,
+                            unfocusedBorderColor = Color.DarkGray,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (adminPinInput == "786") {
+                            showAdminLogin = false
+                            adminPinInput = ""
+                            showAdminPanel = true
+                        } else {
+                            Toast.makeText(context, "Incorrect PIN. Try 786", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PakNeonGreen)
+                ) {
+                    Text("Login", color = Color(0xFF00391C), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showAdminLogin = false; adminPinInput = "" }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
+    }
+
+    // Admin Panel Dialog to review & approve/reject payments
+    if (showAdminPanel) {
+        val requests = repository.getPaymentRequests()
+        Dialog(
+            onDismissRequest = { showAdminPanel = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .padding(vertical = 24.dp)
+                    .clip(RoundedCornerShape(24.dp)),
+                color = Color(0xFF141A23),
+                tonalElevation = 8.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(imageVector = Icons.Default.AdminPanelSettings, contentDescription = null, tint = PakNeonGreen)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Admin Payment Requests Panel", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                        IconButton(onClick = { showAdminPanel = false }) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = Color.Gray)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Review incoming Bank Alfalah payments and grant 30-day Pro/Pro Plus access:",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (requests.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text("No payment requests pending.", color = Color.Gray, fontSize = 14.sp)
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .weight(weight = 1f, fill = false),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            requests.forEach { req ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F141C)),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        when (req.status) {
+                                            "Approved" -> PakNeonGreen
+                                            "Rejected" -> Color.Red
+                                            else -> Color(0xFFFFD700)
+                                        }
+                                    )
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(text = req.planName, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                                            Text(text = req.amount, fontWeight = FontWeight.Bold, color = PakNeonGreen, fontSize = 14.sp)
+                                        }
+                                        Text(text = "Trx ID: ${req.trxId}", fontSize = 12.sp, color = Color.LightGray)
+                                        Text(text = "User: ${req.userEmail}", fontSize = 11.sp, color = Color.Gray)
+                                        Text(text = "Status: ${req.status}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = when(req.status) {
+                                            "Approved" -> PakNeonGreen
+                                            "Rejected" -> Color.Red
+                                            else -> Color(0xFFFFD700)
+                                        })
+
+                                        if (req.status == "Pending") {
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = {
+                                                        repository.updatePaymentRequestStatus(req.id, "Approved")
+                                                        currentTier = repository.getSubscriptionTier()
+                                                        Toast.makeText(context, "Payment Approved & Access Granted!", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = PakNeonGreen),
+                                                    shape = RoundedCornerShape(8.dp)
+                                                ) {
+                                                    Text("Approve", color = Color(0xFF00391C), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                }
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        repository.updatePaymentRequestStatus(req.id, "Rejected")
+                                                        Toast.makeText(context, "Payment Rejected", Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    modifier = Modifier.weight(1f),
+                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red),
+                                                    shape = RoundedCornerShape(8.dp)
+                                                ) {
+                                                    Text("Reject", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { showAdminPanel = false },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = PakNeonGreen)
+                    ) {
+                        Text("Close Admin Panel", color = Color(0xFF00391C), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentDetailRow(label: String, value: String, clipboardManager: ClipboardManager, context: android.content.Context) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(text = label, fontSize = 11.sp, color = Color.Gray)
+            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        }
+        IconButton(
+            onClick = {
+                clipboardManager.setText(AnnotatedString(value))
+                Toast.makeText(context, "$label copied to clipboard", Toast.LENGTH_SHORT).show()
+            },
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(imageVector = Icons.Default.ContentCopy, contentDescription = "Copy", tint = PakNeonGreen, modifier = Modifier.size(16.dp))
         }
     }
 }
@@ -312,7 +630,7 @@ private fun PlanCard(
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     Text(
-                        text = "Upgrade to $title",
+                        text = "Pay via Bank Alfalah for $title",
                         color = if (accentColor == Color(0xFFFFD700)) Color.Black else Color(0xFF00391C),
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp

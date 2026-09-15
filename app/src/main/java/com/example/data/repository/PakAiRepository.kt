@@ -36,6 +36,11 @@ class PakAiRepository(private val context: Context) {
         const val DEVELOPER_EMAIL = "alimuhammadhvn81@gmail.com"
         const val DEFAULT_MODEL = "gemini-3.5-flash"
 
+        // Bank Alfalah Account Details
+        const val BANK_NAME = "Bank Alfalah Limited"
+        const val ACCOUNT_TITLE = "MUHAMMAD ALI"
+        const val ACCOUNT_NUMBER = "02531010276445"
+
         val BASE_SYSTEM_INSTRUCTION = """
             You are Pak AI, an exceptionally smart, friendly, versatile AI assistant developed by Muhammad Ali.
             Your purpose is to perform all work and tasks in a friendly, user-centric manner and empower users with seamless task management, planning, coding, learning, Islamic scholarship, translation, and productivity.
@@ -159,11 +164,108 @@ class PakAiRepository(private val context: Context) {
     }
 
     fun getSubscriptionTier(): String {
+        checkSubscriptionExpiry()
         return sharedPrefs.getString("subscription_tier", "Free") ?: "Free"
     }
 
     fun setSubscriptionTier(tier: String) {
         sharedPrefs.edit().putString("subscription_tier", tier).apply()
+        if (tier != "Free") {
+            sharedPrefs.edit().putLong("subscription_start_time", System.currentTimeMillis()).apply()
+        } else {
+            sharedPrefs.edit().remove("subscription_start_time").apply()
+        }
+    }
+
+    fun checkSubscriptionExpiry() {
+        val tier = sharedPrefs.getString("subscription_tier", "Free") ?: "Free"
+        if (tier != "Free") {
+            val startTime = sharedPrefs.getLong("subscription_start_time", 0L)
+            val currentTime = System.currentTimeMillis()
+            val thirtyDaysMillis = 30L * 24 * 60 * 60 * 1000L
+            if (startTime > 0 && (currentTime - startTime > thirtyDaysMillis)) {
+                sharedPrefs.edit().putString("subscription_tier", "Free").remove("subscription_start_time").apply()
+            }
+        }
+    }
+
+    fun submitPaymentRequest(planName: String, amount: String, trxId: String): com.example.data.model.PaymentRequest {
+        val requestId = "REQ_" + System.currentTimeMillis()
+        val request = com.example.data.model.PaymentRequest(
+            id = requestId,
+            planName = planName,
+            amount = amount,
+            trxId = trxId,
+            userEmail = DEVELOPER_EMAIL,
+            timestamp = System.currentTimeMillis(),
+            status = "Pending"
+        )
+        try {
+            val existingJson = sharedPrefs.getString("payment_requests_list", "[]") ?: "[]"
+            val jsonArray = org.json.JSONArray(existingJson)
+            val obj = org.json.JSONObject().apply {
+                put("id", request.id)
+                put("planName", request.planName)
+                put("amount", request.amount)
+                put("trxId", request.trxId)
+                put("userEmail", request.userEmail)
+                put("timestamp", request.timestamp)
+                put("status", request.status)
+            }
+            jsonArray.put(obj)
+            sharedPrefs.edit().putString("payment_requests_list", jsonArray.toString()).apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return request
+    }
+
+    fun getPaymentRequests(): List<com.example.data.model.PaymentRequest> {
+        val list = mutableListOf<com.example.data.model.PaymentRequest>()
+        try {
+            val jsonStr = sharedPrefs.getString("payment_requests_list", "[]") ?: "[]"
+            val jsonArray = org.json.JSONArray(jsonStr)
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                list.add(
+                    com.example.data.model.PaymentRequest(
+                        id = obj.optString("id"),
+                        planName = obj.optString("planName"),
+                        amount = obj.optString("amount"),
+                        trxId = obj.optString("trxId"),
+                        userEmail = obj.optString("userEmail"),
+                        timestamp = obj.optLong("timestamp"),
+                        status = obj.optString("status", "Pending")
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return list.sortedByDescending { it.timestamp }
+    }
+
+    fun updatePaymentRequestStatus(requestId: String, newStatus: String) {
+        try {
+            val jsonStr = sharedPrefs.getString("payment_requests_list", "[]") ?: "[]"
+            val jsonArray = org.json.JSONArray(jsonStr)
+            val newArray = org.json.JSONArray()
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                if (obj.optString("id") == requestId) {
+                    obj.put("status", newStatus)
+                    if (newStatus == "Approved") {
+                        val planName = obj.optString("planName")
+                        val tier = if (planName.contains("Plus", true)) "Pro Plus" else "Pro"
+                        setSubscriptionTier(tier)
+                    }
+                }
+                newArray.put(obj)
+            }
+            sharedPrefs.edit().putString("payment_requests_list", newArray.toString()).apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     // --- Build Dynamic System Prompt with Personalization ---

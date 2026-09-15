@@ -199,7 +199,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application), T
                     trimmed.contains("تصویر بنائیں", ignoreCase = true)
 
             val result = if (base64Image != null) {
-                val prompt = trimmed.ifBlank { "Analyze this uploaded photo with detail: identify objects, text (OCR), colors, and provide intelligent insights." }
+                val prompt = if (trimmed.isNotBlank()) {
+                    "You are a helpful AI assistant. Please analyze the following uploaded image and answer the user's question: \"$trimmed\""
+                } else {
+                    "Analyze this uploaded photo with detail: identify objects, text (OCR), colors, and provide intelligent insights."
+                }
                 val visionResult = repository.analyzeImage(base64Image, prompt)
                 if (isPhotoCreationIntent && visionResult.isSuccess) {
                     val cleanPrompt = trimmed.replace(Regex("(?i)^(/image|/photo|create photo|generate photo|generate image|draw photo|photo banao|tasveer banao|تصویر بنائیں)\\s*"), "").trim().ifBlank { "creative photorealistic transformation" }

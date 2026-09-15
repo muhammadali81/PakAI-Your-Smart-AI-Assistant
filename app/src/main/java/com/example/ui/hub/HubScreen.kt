@@ -328,6 +328,80 @@ fun HubScreen(
                 }
             }
 
+            // Cross-Platform Online Downloads Card (Android APK, Windows, Mac OS, Apple iOS)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("cross_platform_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                border = androidx.compose.foundation.BorderStroke(1.dp, PakGoldAccent.copy(alpha = 0.4f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = PakGoldAccent, modifier = Modifier.size(20.dp))
+                        Text(
+                            text = "Cross-Platform Online Access",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Pak AI works online with real-time cloud connectivity across all major operating systems. Download or access instantly:",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val ctx = LocalContext.current
+                        Button(
+                            onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://ais-pre-ahvnpmniinl2433bcn6mru-521382510398.asia-east1.run.app/PakAI.apk"))
+                                ctx.startActivity(intent)
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = PakNeonGreen),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                        ) {
+                            Text("Android APK", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00391C))
+                        }
+
+                        Button(
+                            onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://ais-pre-ahvnpmniinl2433bcn6mru-521382510398.asia-east1.run.app"))
+                                ctx.startActivity(intent)
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1F2937)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                        ) {
+                            Text("Windows & Mac", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        Button(
+                            onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://ais-pre-ahvnpmniinl2433bcn6mru-521382510398.asia-east1.run.app"))
+                                ctx.startActivity(intent)
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1F2937)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                        ) {
+                            Text("Apple iOS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+            }
+
             // Stats Quick Summary
             Row(
                 modifier = Modifier.fillMaxWidth(),

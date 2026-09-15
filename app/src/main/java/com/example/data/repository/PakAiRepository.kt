@@ -158,6 +158,14 @@ class PakAiRepository(private val context: Context) {
         sharedPrefs.edit().putBoolean("deep_think_enabled", enabled).apply()
     }
 
+    fun getSubscriptionTier(): String {
+        return sharedPrefs.getString("subscription_tier", "Free") ?: "Free"
+    }
+
+    fun setSubscriptionTier(tier: String) {
+        sharedPrefs.edit().putString("subscription_tier", tier).apply()
+    }
+
     // --- Build Dynamic System Prompt with Personalization ---
     fun buildSystemInstruction(): String {
         val builder = StringBuilder(BASE_SYSTEM_INSTRUCTION)

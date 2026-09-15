@@ -60,6 +60,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import com.example.ui.components.VoiceCommandDialog
+import com.example.ui.components.UpgradeDialog
 import com.example.ui.tools.StudioTool
 import com.example.ui.tools.ToolsStudioScreen
 
@@ -83,6 +84,7 @@ fun MainScreen(
     var showDevInfoDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showVoiceDialog by remember { mutableStateOf(false) }
+    var showUpgradeDialog by remember { mutableStateOf(false) }
     var activeStudioTool by remember { mutableStateOf(StudioTool.PDF_MAKER) }
     var studioInitialTopic by remember { mutableStateOf("") }
 
@@ -324,6 +326,9 @@ fun MainScreen(
                                 },
                                 onOpenVoiceAssistant = {
                                     showVoiceDialog = true
+                                },
+                                onOpenUpgrade = {
+                                    showUpgradeDialog = true
                                 }
                             )
                         }
@@ -390,6 +395,14 @@ fun MainScreen(
                 chatViewModel.setCustomApiKey(newKey)
             },
             onDismiss = { showDevInfoDialog = false }
+        )
+    }
+
+    // Upgrade Membership Dialog
+    if (showUpgradeDialog) {
+        UpgradeDialog(
+            repository = chatViewModel.repository,
+            onDismiss = { showUpgradeDialog = false }
         )
     }
 }

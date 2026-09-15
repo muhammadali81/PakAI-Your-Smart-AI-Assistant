@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -87,6 +88,7 @@ fun HubScreen(
     onClearCompletedTasks: () -> Unit,
     onOpenStudioTool: (StudioTool) -> Unit = {},
     onOpenVoiceAssistant: () -> Unit = {},
+    onOpenUpgrade: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -257,6 +259,70 @@ fun HubScreen(
                             text = "View App & Developer Details",
                             color = Color(0xFF00391C),
                             fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Upgrade Membership Banner Card (Pro 3000 PKR / Pro Plus 6000 PKR)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenUpgrade)
+                    .testTag("upgrade_membership_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF14201A)),
+                border = androidx.compose.foundation.BorderStroke(1.5.dp, PakNeonGreen)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(PakNeonGreen),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WorkspacePremium,
+                                contentDescription = null,
+                                tint = Color(0xFF00391C),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Upgrade to Pro / Pro Plus",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Pro (3,000 PKR) • Pro Plus (6,000 PKR)",
+                                fontSize = 12.sp,
+                                color = PakNeonGreen
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = onOpenUpgrade,
+                        colors = ButtonDefaults.buttonColors(containerColor = PakNeonGreen),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Upgrade",
+                            color = Color(0xFF00391C),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         )
                     }
                 }

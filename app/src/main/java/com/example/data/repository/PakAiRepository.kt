@@ -20,6 +20,7 @@ import com.example.utils.SlideModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class PakAiRepository(private val context: Context) {
 
@@ -292,6 +293,132 @@ class PakAiRepository(private val context: Context) {
             sharedPrefs.edit().putString("payment_requests_list", newArray.toString()).apply()
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    // --- Subscription & Photo Generation Limits ---
+    fun checkPhotoGenerationAllowance(): Pair<Boolean, String> {
+        val tier = getSubscriptionTier()
+        val today = java.text.SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(java.util.Date())
+        val prefKey = "photo_count_$today"
+        val count = sharedPrefs.getInt(prefKey, 0)
+
+        return when (tier) {
+            "Pro Plus" -> Pair(true, "Unlimited (Pro Plus)")
+            "Pro" -> {
+                if (count < 20) {
+                    sharedPrefs.edit().putInt(prefKey, count + 1).apply()
+                    Pair(true, "${20 - (count + 1)} Pro generations remaining today")
+                } else {
+                    Pair(false, "Daily Pro photo limit (20) reached. Upgrade to Pro Plus for unlimited photos!")
+                }
+            }
+            else -> { // Free
+                if (count < 3) {
+                    sharedPrefs.edit().putInt(prefKey, count + 1).apply()
+                    Pair(true, "${3 - (count + 1)} Free generations remaining today")
+                } else {
+                    Pair(false, "Daily Free photo limit (3) reached. Upgrade to Pro or Pro Plus for more generations!")
+                }
+            }
+        }
+    }
+
+    // --- Prompt-based Setting Configuration Parser ---
+    fun parseAndApplySettingsFromPrompt(prompt: String): String? {
+        val lower = prompt.lowercase()
+        return when {
+            lower.contains("set theme to dark") || lower.contains("dark mode") -> {
+                setThemeMode("Dark")
+                "⚙️ Pak AI Setting Updated: Theme set to **Dark Mode**."
+            }
+            lower.contains("set theme to light") || lower.contains("light mode") -> {
+                setThemeMode("Light")
+                "⚙️ Pak AI Setting Updated: Theme set to **Light Mode**."
+            }
+            lower.contains("set model to pro") -> {
+                setSelectedModel("gemini-3.5-pro")
+                "⚙️ Pak AI Setting Updated: Active model set to **Pak AI 3.5 Pro**."
+            }
+            lower.contains("set model to flash") -> {
+                setSelectedModel("gemini-3.5-flash")
+                "⚙️ Pak AI Setting Updated: Active model set to **Pak AI 3.5 Flash**."
+            }
+            lower.contains("enable deep think") -> {
+                setDeepThinkEnabled(true)
+                "⚙️ Pak AI Setting Updated: **Deep Thinking Mode** enabled."
+            }
+            lower.contains("disable deep think") -> {
+                setDeepThinkEnabled(false)
+                "⚙️ Pak AI Setting Updated: **Deep Thinking Mode** disabled."
+            }
+            lower.contains("enable web search") -> {
+                setWebSearchEnabled(true)
+                "⚙️ Pak AI Setting Updated: **Web Browse Search** enabled."
+            }
+            lower.contains("disable web search") -> {
+                setWebSearchEnabled(false)
+                "⚙️ Pak AI Setting Updated: **Web Browse Search** disabled."
+            }
+            lower.contains("set tts speed") -> {
+                setTtsSpeed(1.5f)
+                "⚙️ Pak AI Setting Updated: Voice TTS speed set to **1.5x**."
+            }
+            else -> null
+        }
+    }
+
+    // --- Index Generation for Documents and Chats ---
+    suspend fun generateIndexForTopic(topic: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val apiKey = getApiKey()
+            val prompt = """
+                Generate a comprehensive, structured Table of Contents / Index for the topic or project: "$topic".
+                Include sections, chapters, key modules, sub-topics, and visual diagram annotations.
+                Format clearly in markdown with headings and bullet points.
+            """.trimIndent()
+
+            val request = GenerateContentRequest(
+                contents = listOf(ContentItem(role = "user", parts = listOf(PartItem(text = prompt)))),
+                generationConfig = GenerationConfig(temperature = 0.3f, maxOutputTokens = 2000)
+            )
+
+            val response = apiService.generateContent(
+                model = getSelectedModel(),
+                apiKey = apiKey,
+                request = request
+            )
+            val indexText = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                ?: throw Exception("Failed to generate index")
+            Result.success("### 📚 Generated Index & Structure for: $topic\n\n$indexText")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // --- ZIP File Exporter ---
+    fun exportProjectZip(): java.io.File? {
+        try {
+            val zipFile = java.io.File(context.cacheDir, "PakAI_Project_Export_${System.currentTimeMillis()}.zip")
+            val zipOutputStream = java.util.zip.ZipOutputStream(java.io.FileOutputStream(zipFile))
+
+            // 1. Export settings & metadata
+            val settingsText = buildString {
+                append("Pak AI Project Export\n")
+                append("Developer: Muhammad Ali (alimuhammadhvn81@gmail.com)\n")
+                append("Subscription Tier: ${getSubscriptionTier()}\n")
+                append("Model: ${getSelectedModel()}\n")
+                append("Theme: ${getThemeMode()}\n")
+            }
+            zipOutputStream.putNextEntry(java.util.zip.ZipEntry("settings_metadata.txt"))
+            zipOutputStream.write(settingsText.toByteArray())
+            zipOutputStream.closeEntry()
+
+            zipOutputStream.close()
+            return zipFile
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
         }
     }
 

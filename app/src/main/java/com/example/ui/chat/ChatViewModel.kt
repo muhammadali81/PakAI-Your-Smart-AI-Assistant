@@ -187,7 +187,16 @@ class ChatViewModel(application: Application) : AndroidViewModel(application), T
 
             _isLoading.value = true
 
-            // 3. Check for Photo Creation prompt intent or query AI
+            // 3. Check for Prompt-based Setting Configuration
+            val settingResult = repository.parseAndApplySettingsFromPrompt(trimmed)
+            
+            // Check for Index Generation intent
+            val isIndexIntent = trimmed.startsWith("/index", true) || trimmed.contains("create index", true) || trimmed.contains("generate index", true) || trimmed.contains("index banao", true)
+            
+            // Check for ZIP Export intent
+            val isZipIntent = trimmed.startsWith("/zip", true) || trimmed.contains("create zip", true) || trimmed.contains("export zip", true) || trimmed.contains("zip file banao", true)
+
+            // Check for Photo Creation prompt intent
             val isPhotoCreationIntent = trimmed.startsWith("/image", ignoreCase = true) ||
                     trimmed.startsWith("/photo", ignoreCase = true) ||
                     trimmed.contains("create photo", ignoreCase = true) ||
@@ -198,51 +207,78 @@ class ChatViewModel(application: Application) : AndroidViewModel(application), T
                     trimmed.contains("tasveer banao", ignoreCase = true) ||
                     trimmed.contains("تصویر بنائیں", ignoreCase = true)
 
-            val result = if (base64Image != null) {
-                val prompt = if (trimmed.isNotBlank()) {
-                    "You are a helpful AI assistant. Please analyze the following uploaded image and answer the user's question: \"$trimmed\""
-                } else {
-                    "Analyze this uploaded photo with detail: identify objects, text (OCR), colors, and provide intelligent insights."
+            val result = when {
+                settingResult != null -> Result.success(settingResult)
+                isIndexIntent -> {
+                    val topic = trimmed.replace(Regex("(?i)^(/index|create index|generate index|index banao)\\s*"), "").trim().ifBlank { "Pak AI Project Documentation & Structure" }
+                    repository.generateIndexForTopic(topic)
                 }
-                val visionResult = repository.analyzeImage(base64Image, prompt)
-                if (isPhotoCreationIntent && visionResult.isSuccess) {
-                    val cleanPrompt = trimmed.replace(Regex("(?i)^(/image|/photo|create photo|generate photo|generate image|draw photo|photo banao|tasveer banao|تصویر بنائیں)\\s*"), "").trim().ifBlank { "creative photorealistic transformation" }
-                    val photoUrl = repository.generatePhotoUrl(cleanPrompt)
-                    val combinedReply = buildString {
-                        append("🎨 **Photo Analysis & Generation:**\n\n")
-                        append(visionResult.getOrNull() ?: "")
-                        append("\n\n---\n### 🖼️ Created Photo according to Prompt:\n\n")
-                        append("![$cleanPrompt]($photoUrl)\n\n")
-                        append("✨ **Prompt:** $cleanPrompt\n")
-                        append("📌 *Image rendered live. Tap to view or download.*")
+                isZipIntent -> {
+                    val zipFile = repository.exportProjectZip()
+                    if (zipFile != null) {
+                        Result.success("📦 **Project ZIP Archive Created Successfully!**\n\n- File Name: `${zipFile.name}`\n- Path: `${zipFile.absolutePath}`\n- Contents: Chat history, settings metadata, generated photo indexes.\n\n*Saved in local device cache ready for sharing.*")
+                    } else {
+                        Result.failure(Exception("Failed to generate ZIP archive"))
                     }
-                    Result.success(combinedReply)
-                } else {
-                    visionResult
                 }
-            } else if (isPhotoCreationIntent) {
-                val cleanPrompt = trimmed.replace(Regex("(?i)^(/image|/photo|create photo of|create photo|generate photo of|generate photo|generate image of|generate image|draw photo of|draw photo|photo banao|tasveer banao|تصویر بنائیں)\\s*"), "").trim().ifBlank { trimmed }
-                val photoUrl = repository.generatePhotoUrl(cleanPrompt)
-                val reply = buildString {
-                    append("### 🖼️ Created Photo according to Prompt:\n\n")
-                    append("![$cleanPrompt]($photoUrl)\n\n")
-                    append("✨ **Prompt:** $cleanPrompt  \n")
-                    append("🎨 **Engine:** Pak AI Neural Visual Core (1024x1024 Photorealistic)  \n")
-                    append("💡 *Tip: You can open this photo in Photo Studio for filters, cropping, and instant export!*")
+                base64Image != null -> {
+                    val prompt = if (trimmed.isNotBlank()) {
+                        "You are a helpful AI assistant. Please analyze the following uploaded image and answer the user's question: \"$trimmed\""
+                    } else {
+                        "Analyze this uploaded photo with detail: identify objects, text (OCR), colors, and provide intelligent insights."
+                    }
+                    val visionResult = repository.analyzeImage(base64Image, prompt)
+                    if (isPhotoCreationIntent && visionResult.isSuccess) {
+                        val allowance = repository.checkPhotoGenerationAllowance()
+                        if (!allowance.first) {
+                            Result.failure(Exception(allowance.second))
+                        } else {
+                            val cleanPrompt = trimmed.replace(Regex("(?i)^(/image|/photo|create photo|generate photo|generate image|draw photo|photo banao|tasveer banao|تصویر بنائیں)\\s*"), "").trim().ifBlank { "creative photorealistic transformation" }
+                            val photoUrl = repository.generatePhotoUrl(cleanPrompt)
+                            val combinedReply = buildString {
+                                append("🎨 **Photo Analysis & Generation (${allowance.second}):**\n\n")
+                                append(visionResult.getOrNull() ?: "")
+                                append("\n\n---\n### 🖼️ Created Photo according to Prompt:\n\n")
+                                append("![$cleanPrompt]($photoUrl)\n\n")
+                                append("✨ **Prompt:** $cleanPrompt\n")
+                                append("📌 *Image rendered live. Tap to view or download.*")
+                            }
+                            Result.success(combinedReply)
+                        }
+                    } else {
+                        visionResult
+                    }
                 }
-                Result.success(reply)
-            } else {
-                val queryText = if (fileContentSnippet != null) {
-                    "$trimmed\n\n--- Attached File Content ($attachmentName) ---\n$fileContentSnippet"
-                } else {
-                    trimmed
+                isPhotoCreationIntent -> {
+                    val allowance = repository.checkPhotoGenerationAllowance()
+                    if (!allowance.first) {
+                        Result.failure(Exception(allowance.second))
+                    } else {
+                        val cleanPrompt = trimmed.replace(Regex("(?i)^(/image|/photo|create photo of|create photo|generate photo of|generate photo|generate image of|generate image|draw photo of|draw photo|photo banao|tasveer banao|تصویر بنائیں)\\s*"), "").trim().ifBlank { trimmed }
+                        val photoUrl = repository.generatePhotoUrl(cleanPrompt)
+                        val reply = buildString {
+                            append("### 🖼️ Created Photo according to Prompt (${allowance.second}):\n\n")
+                            append("![$cleanPrompt]($photoUrl)\n\n")
+                            append("✨ **Prompt:** $cleanPrompt  \n")
+                            append("🎨 **Engine:** Pak AI Neural Visual Core (1024x1024 Photorealistic)  \n")
+                            append("💡 *Tip: Pro Plus gives you unlimited photo generations instantly!*")
+                        }
+                        Result.success(reply)
+                    }
                 }
-                val currentHistory = messages.value
-                repository.sendMessage(
-                    userMessage = queryText,
-                    conversationHistory = currentHistory,
-                    overrideModel = _selectedModel.value
-                )
+                else -> {
+                    val queryText = if (fileContentSnippet != null) {
+                        "$trimmed\n\n--- Attached File Content ($attachmentName) ---\n$fileContentSnippet"
+                    } else {
+                        trimmed
+                    }
+                    val currentHistory = messages.value
+                    repository.sendMessage(
+                        userMessage = queryText,
+                        conversationHistory = currentHistory,
+                        overrideModel = _selectedModel.value
+                    )
+                }
             }
 
             if (result.isSuccess) {
